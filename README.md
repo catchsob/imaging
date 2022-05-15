@@ -1,7 +1,11 @@
 # imaging
-Support of images classifier
+Supports of images classifying
 
-A cross-platform desktop images classifier test application
+## imgc
+A cross-platform desktop images classifying test application
 
-## platform
+### usage
+Windows: python imgc.py
+
+### verified platform
 Windows 10
