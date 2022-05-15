@@ -8,7 +8,8 @@ A cross-platform desktop images classifying test application
 Python: TensorFlow, Pillow
 
 ### usage
-Windows: python imgc.py
+Windows: python imgc.py<br>
+Jetson Nano: python3 imgc.py
 
 ### verified environment
 Windows 10 with Python 3.6.8 + TensorFlow 2.4.3 + HDF5 model<br>
