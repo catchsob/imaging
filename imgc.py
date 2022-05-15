@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[4]:
+# In[9]:
 
 
 from time import time
 from threading import Thread
 
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import Tk, Button, Label, PanedWindow, PhotoImage, Toplevel
 from tkinter.simpledialog import askinteger
 from tkinter.filedialog import askopenfilename
@@ -16,7 +17,7 @@ from tensorflow.keras.models import load_model
 import numpy as np
 from PIL import Image, ImageTk
 
-WIDTH = 186
+WIDTH = 194
 RES = 200
 
 class Classifier:
@@ -33,41 +34,39 @@ class Classifier:
         self.screen = screen
         
         # display
-        self.lbl_disp = Label(screen, text='nothing', font=('Ubuntu Mono', 16), height=8,
-                              fg='blue', bg='white')
+        self.lbl_disp = Label(screen, text='nothing', height=8, fg='blue', bg='white')
         self.lbl_disp.pack(fill='x')
-        self.lbl_cat = Label(screen, text='no label', font=('Ubuntu Mono', 16),
-                             fg='white', bg='brown')
+        self.lbl_cat = Label(screen, text='no label', fg='white', bg='brown')
         self.lbl_cat.pack(fill='x')
 
         # function buttons
         self.pnw_inp = PanedWindow(screen)
         self.pnw_inp.pack(fill='x')
-        self.but_pic = Button(self.pnw_inp, text='classify...', font=('Arial', 16),
+        self.but_pic = Button(self.pnw_inp, text='classify...',
                               bg='green', fg='white', command=self.pic, state=tk.DISABLED)
         self.but_pic.pack(side='left', fill='x', expand=True)
-        self.but_clear = Button(self.pnw_inp, text='clear', font=('Arial', 16),
+        self.but_clear = Button(self.pnw_inp, text='clear', 
                                 bg='yellow', command=self.clear)
         self.but_clear.pack(side='left', fill='x', expand=True)
-        self.but_exit = Button(self.pnw_inp, text='exit', font=('Arial', 16),
+        self.but_exit = Button(self.pnw_inp, text='exit', 
                                bg='red', command=window.destroy)
         self.but_exit.pack(side='left', fill='x', expand=True)
         
         # model buttons
         self.pnw_load = PanedWindow(screen)
         self.pnw_load.pack(fill='x')
-        self.but_loadmodel = Button(self.pnw_load, text='model...', font=('Arial', 16),
+        self.but_loadmodel = Button(self.pnw_load, text='model...', 
                                     bg='green', fg='white', command=self.loadmodel)
         self.but_loadmodel.pack(side='left', fill='x', expand=True)
-        self.but_loadlabel = Button(self.pnw_load, text='labels...', font=('Arial', 16),
+        self.but_loadlabel = Button(self.pnw_load, text='labels...', 
                                     bg='green', fg='white', command=self.loadlabel)
         self.but_loadlabel.pack(side='left', fill='x', expand=True)
-        self.but_res = Button(self.pnw_load, text='res...', font=('Arial', 16),
+        self.but_res = Button(self.pnw_load, text='res...', 
                               bg='green', fg='white', command=self.setres)
         self.but_res.pack(side='left', fill='x', expand=True)
         
         # status
-        self.lbl_status = Label(screen, text='', font=('Ubuntu Mono', 12))
+        self.lbl_status = Label(screen, text='')
         self.lbl_status.pack(fill='x')
     
     def clear(self):
@@ -77,7 +76,7 @@ class Classifier:
         self.lbl_status['text'] = ''
     
     def loadlabel(self):
-        dlg = Toplevel()
+        dlg = Toplevel()  # TopLevel would be triggered as a new dialog or screen
         dlg.title('labels...')
         dlg.resizable(width=False, height=False)
         
@@ -128,7 +127,7 @@ class Classifier:
                 s = self.label[p] if self.label and p < len(self.label) else str(p)
                 self.lbl_cat['text'] = s
                 self.but_pic['state'] = tk.NORMAL
-                self.lbl_status['text'] = f'classified for {(time() - start)*1000:.0f} ms'
+                self.lbl_status['text'] = f'classified for {(time() - start)*1000:,.0f} ms'
             Thread(target=classify, args=(imgclsf,)).start()
     
     def setres(self):
@@ -146,26 +145,25 @@ class AskLabels:
         
         self.pnw_bar1 = PanedWindow(screen)
         self.pnw_bar1.pack(anchor='w')
-        self.but_pick = Button(self.pnw_bar1, text='pick labels', font=('Ubuntu Mono', 16),
+        self.but_pick = Button(self.pnw_bar1, text='pick labels',
                                bg='green', fg='white', width=w, command=self.picklabels)
         self.but_pick.pack(side='left')
-        self.lbl_disp = Label(self.pnw_bar1, text=f'{parent.labelname}',
-                              font=('Ubuntu Mono', 16))
+        self.lbl_disp = Label(self.pnw_bar1, text=f'{parent.labelname}')
         self.lbl_disp.pack(side='left', expand=True)
         self.pnw_bar1.update()
         
-        self.but_remv = Button(screen, text='remove', font=('Ubuntu Mono', 16), width=w,
+        self.but_remv = Button(screen, text='remove', width=w,
                                bg='green', fg='white', command=self.removelabels,
                                state=tk.NORMAL if parent.label else tk.DISABLED)
         self.but_remv.pack(anchor='w', expand=True)
         
         self.pnw_bar2 = PanedWindow(screen)
         self.pnw_bar2.pack(anchor='w')
-        self.but_done = Button(self.pnw_bar2, text='load', font=('Ubuntu Mono', 16), width=w,
+        self.but_done = Button(self.pnw_bar2, text='load', width=w,
                                bg='green', fg='white', command=self.loadlabels,
                                state=tk.NORMAL if self._labelname else tk.DISABLED)
         self.but_done.pack(side='left')
-        self.but_cncl = Button(self.pnw_bar2, text='cancel', font=('Ubuntu Mono', 16),
+        self.but_cncl = Button(self.pnw_bar2, text='cancel', 
                                bg='red', fg='black', command=screen.destroy)
         self.but_cncl.pack(side='left')
     
@@ -180,7 +178,7 @@ class AskLabels:
         else:
             self.but_done['state'] = tk.DISABLED
         
-        self.screen.lift()
+        self.screen.lift()  # to pop up the screen
                     
     def loadlabels(self):
         parent = self.parent
@@ -218,20 +216,20 @@ class AskModel:
         
         self.bar1 = PanedWindow(screen)
         self.bar1.pack(anchor='w')
-        self.but_pick = Button(self.bar1, text='pick model', font=('Ubuntu Mono', 16),
+        self.but_pick = Button(self.bar1, text='pick model',
                                bg='green', fg='white', width=w, command=self.pickmodel)
         self.but_pick.pack(side='left')
-        self.lbl_disp = Label(self.bar1, text=f'{parent.modelname}', font=('Ubuntu Mono', 16))
+        self.lbl_disp = Label(self.bar1, text=f'{parent.modelname}')
         self.lbl_disp.pack(side='left', expand=True)
         self.bar1.update()
         
         self.bar2 = PanedWindow(screen)
         self.bar2.pack(anchor='w')
-        self.but_done = Button(self.bar2, text='load', font=('Ubuntu Mono', 16), width=w,
+        self.but_done = Button(self.bar2, text='load', width=w,
                                bg='green', fg='white', command=self.loadmodel,
                                state=tk.NORMAL if self._modelname else tk.DISABLED)
         self.but_done.pack(side='left')
-        self.but_cncl = Button(self.bar2, text='cancel', font=('Ubuntu Mono', 16),
+        self.but_cncl = Button(self.bar2, text='cancel',
                                bg='red', fg='black', command=screen.destroy)
         self.but_cncl.pack(side='left')
     
@@ -259,7 +257,7 @@ class AskModel:
                 start = time()
                 parent.model = load_model(self._modelname)
                 parent.modelname = self._modelname
-                parent.lbl_status['text'] = f'model loaded for {time() - start:.2f} secs'
+                parent.lbl_status['text'] = f'model loaded for {time() - start:,.2f} secs'
                 parent.but_pic['state'] = tk.NORMAL
                 self._modelname = None
             Thread(target=load).start()
@@ -269,8 +267,9 @@ class AskModel:
         self.screen.destroy()
     
 window = Tk()
+tkfont.nametofont("TkDefaultFont").configure(size=14)
 window.title('分類器')
-window.geometry(f'{WIDTH+50}x330')
+window.geometry(f'{WIDTH+70}x350')
 window.resizable(width=False, height=False)
 
 Classifier(window)
