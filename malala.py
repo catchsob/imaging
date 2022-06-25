@@ -7,6 +7,7 @@
 
 
 import os
+import json
 from base64 import b64decode
 from io import BytesIO
 from time import time
@@ -15,20 +16,20 @@ from collections import OrderedDict
 from copy import deepcopy
 import tkinter as tk
 import tkinter.font as tkfont
-from tkinter import Tk, Button, Label, PanedWindow, PhotoImage, Frame
+from tkinter import Tk, Button, Label, PanedWindow, PhotoImage, Frame, Radiobutton
 from tkinter.filedialog import askopenfilename, askdirectory, asksaveasfilename
 from tkinter.messagebox import showinfo
 
 from PIL import Image, ImageTk
 
-from resource import *
+from r import *
 
 
 # In[2]:
 
 
 NAME = 'MaLaLa'
-RES = 400
+VER = '0.1.0'
 PUSHED_RFB = [[tk.RAISED, 'white', 'green'], [tk.SUNKEN, 'green', 'white']]
 STATUS_FG = {'normal': 'black', 'alert': 'red'}
 
@@ -169,24 +170,27 @@ class Trees:
         return files
 
 
-# In[4]:
+# In[6]:
 
 
 class Malala:
     
-    def __init__(self, screen):
+    def __init__(self, screen, conf=None):
         self.label = None
         self.trees = None
         self.pici = -1
         self.labels = []
         self.screen = screen
         self.pnw_labels = None
+        self.labelfilename = None
+        self.conf = conf or 'malala.json'
+        self.res = 400
         
         # screen        
         screen.title(NAME)
         screen.iconphoto(False, PhotoImage(data=b64decode(wt_icon_bg_png)))
-        screen.geometry(f'{RES+270}x{RES+80}')
-        screen.resizable(width=True, height=False)
+        screen.geometry(f'{self.res+270}x{self.res+80}')
+        screen.resizable(width=False, height=False)
         screen.bind('<Control-s>', self.save_annos)
         
         # status
@@ -194,9 +198,9 @@ class Malala:
         self.lbl_status.pack(fill='x', side='bottom')
         
         # display
-        self.pnw_main = PanedWindow(screen, width=RES)
+        self.pnw_main = PanedWindow(screen, width=self.res)
         self.pnw_main.pack(fill='both', side='left', expand=True)
-        self.frm_disp = Frame(self.pnw_main, height=RES, width=RES, bg='white')
+        self.frm_disp = Frame(self.pnw_main, height=self.res, width=self.res, bg='white')
         self.frm_disp.pack(fill='both', expand=True, side='top')
         self.lbl_disp = Label(self.frm_disp, bg='white')
         self.lbl_disp.pack(fill='both', expand=True)
@@ -216,7 +220,8 @@ class Malala:
         self.but_next = Button(self.pnw_nav, text='>', fg='white', bg='brown',
                                command=lambda: self.do_pic('>'))
         self.but_next.pack(fill='x', side='right')
-        self.lbl_file = Label(self.pnw_nav, text='no file', anchor='e', wraplength=RES-140)
+        self.lbl_file = Label(self.pnw_nav, text='no file', anchor='e',
+                              wraplength=self.res-140)
         self.lbl_file.pack(side='right')
         
         # dock region
@@ -236,8 +241,9 @@ class Malala:
                                 bg='blue', fg='white', command=self.about)
         self.but_about.pack(side='left', fill='x', expand=False)
         self.but_exit = Button(self.pnw_supp, text='exit', width=5, anchor='w',
-                               bg='red', fg='white', command=window.destroy)
+                               bg='red', fg='white', command=self.do_exit)
         self.but_exit.pack(side='left', fill='x', expand=False)
+        self.screen.protocol("WM_DELETE_WINDOW", self.do_exit)
         
         # annotation functions
         self.pnw_anno = PanedWindow(self.pnw_dock)
@@ -268,21 +274,65 @@ class Malala:
         self.but_labels = Button(self.pnw_func, text='labels...', width=5, anchor='w',
                                  bg='gray', fg='white', command=self.load_labels)
         self.but_labels.pack(side='left', fill='x')
+        
+        # load configurations or last status
+        self.load_conf()
     
+    def load_conf(self):
+        if self.conf and os.path.isfile(self.conf):
+            try:
+                with open(self.conf, encoding='utf-8') as f:
+                    j = json.load(f)
+                lb = j.get('labelfilename')
+                if lb and os.path.isfile(lb):
+                    self.load_labels(lb)
+                res = j.get('resolution')
+                if res and res in [400, 600]:
+                    self.zoom(res)
+            except:
+                pass
+    
+    def do_exit(self):
+        if self.labelfilename:
+            try:
+                with open(self.conf, 'w', encoding='utf-8') as f:
+                    j = {'labelfilename': self.labelfilename,
+                         'resolution': self.res}
+                    json.dump(j, f)
+            except Exception as e:
+                print(e)
+        self.screen.destroy()
+        
     def status(self, desc, mode='normal'):
         self.lbl_status.config(fg=STATUS_FG[mode], text=(desc or 'None'))
-    
-    def zoom(self):
-        global RES
-        if self.but_zoom['relief'] == tk.RAISED:
-            RES, relief, fg, bg = 600, tk.SUNKEN, 'magenta', 'white'
+            
+    def zoom(self, res=None):
+        '''
+        res - specific resolution, for last configuration case
+        '''
+        zmap = {tk.RAISED: {'res': 600,
+                            'act': {'relief': tk.SUNKEN, 'fg': 'magenta', 'bg': 'white'}},
+                tk.SUNKEN: {'res': 400,
+                            'act':{'relief': tk.RAISED, 'fg': 'white', 'bg': 'magenta'}}}
+        
+        if res:
+            found = False
+            for k in zmap:
+                if zmap[k]['res'] == res:
+                    relief = k
+                    self.res = res
+                    found = True
+                    break
+            if not found:
+                return
         else:
-            RES, relief, fg, bg = 400, tk.RAISED, 'white', 'magenta'
+            relief = self.but_zoom['relief']
+            self.res = zmap[relief]['res']
         
         # redraw
-        self.screen.geometry(f'{RES+270}x{RES+80}')
-        self.but_zoom.config(relief=relief, fg=fg, bg=bg)
-        self.lbl_file.config(wraplength=RES-140)
+        self.screen.geometry(f'{self.res+270}x{self.res+80}')
+        self.but_zoom.config(**zmap[relief]['act'])
+        self.lbl_file.config(wraplength=self.res-140)
         if self.pici >= 0:
             self.pic(self.trees.pics[self.pici])
     
@@ -291,7 +341,7 @@ class Malala:
             os.system(self.trees.pics[self.pici])
     
     def about(self):
-        showinfo(f'about {NAME}', f'{NAME}, a Multi-label Labeler\n\n' +
+        showinfo(f'about {NAME}', f'{NAME} v{VER}, a Multi-label Labeler\n\n' +
                  'Copyright © 2022 Enos Chou')
     
     def do_pic(self, direction):
@@ -314,8 +364,64 @@ class Malala:
             self.draw_labels()  # clear labels
         elif not labeltoall:
             self.switch_labus(self.trees.nna(p))  # switch label button with min refresh
-            
+    
+    def nav_visi(self, direction):  # 'a' won't go here
+        if direction == '|<':
+            j = 0
+            if self.visi.get() == 's':
+                while j < len(self.trees) and len(self.trees.nnai(j)) != 1:
+                    j += 1
+            elif self.visi.get() == 'm':
+                while j < len(self.trees) and len(self.trees.nnai(j)) < 2:
+                    j += 1
+            elif self.visi.get() == 'n':
+                while j < len(self.trees) and len(self.trees.nnai(j)):
+                    j += 1
+            i = j if j < len(self.trees) else 0
+        elif direction == '<':
+            j = self.pici - 1
+            if j >= 0:
+                if self.visi.get() == 's':
+                    while j >= 0 and len(self.trees.nnai(j)) != 1:
+                        j -= 1
+                elif self.visi.get() == 'm':
+                    while j >= 0 and len(self.trees.nnai(j)) < 2:
+                        j -= 1
+                elif self.visi.get() == 'n':
+                    while j >= 0 and len(self.trees.nnai(j)):
+                        j -= 1
+            i = j if j >= 0 else None
+        elif direction == '>':
+            j = self.pici + 1
+            if j < len(self.trees):
+                if self.visi.get() == 's':
+                    while j < len(self.trees) and len(self.trees.nnai(j)) != 1:
+                        j += 1
+                elif self.visi.get() == 'm':
+                    while j < len(self.trees) and len(self.trees.nnai(j)) < 2:
+                        j += 1
+                elif self.visi.get() == 'n':
+                    while j < len(self.trees) and len(self.trees.nnai(j)):
+                        j += 1
+            i = j if j < len(self.trees) else None
+        else:  # '>|'
+            j = len(self.trees) - 1
+            if self.visi.get() == 's':
+                while j >= 0 and len(self.trees.nnai(j)) != 1:
+                    j -= 1
+            elif self.visi.get() == 'm':
+                while j >= 0 and len(self.trees.nnai(j)) < 2:
+                    j -= 1
+            elif self.visi.get() == 'n':
+                while j >= 0 and len(self.trees.nnai(j)):
+                    j -= 1
+            i = j if j >= 0 else None
+        return i
+        
     def nav(self, direction):
+        if self.labels and self.visi.get() != 'a': 
+            return self.nav_visi(direction)
+        
         if direction == '|<':
             i = 0
         elif direction == '<':
@@ -350,7 +456,7 @@ class Malala:
         img = self.crop(img)
         
         # draw
-        img = img.resize((RES,)*2)
+        img = img.resize((self.res,)*2)
         imgtk = ImageTk.PhotoImage(image=img)
         self.lbl_disp.imgtk = imgtk
         self.lbl_disp.config(image=imgtk)
@@ -388,18 +494,20 @@ class Malala:
         self.pici = -1
         self.label = None
         self.labels = []
+        self.labelfilename = None
         if self.pnw_labels:
             self.pnw_labels.destroy()
             self.pnw_labels = None
     
-    def load_labels(self):
-        d = askopenfilename(title='Select labels file')
+    def load_labels(self, filename=None):
+        d = filename or askopenfilename(title='Select labels file')
         if d:
             try:
                 with open(d, encoding='utf-8') as f:
                     self.labels = [line.strip() for line in f.readlines()]
                 self.status(f'{d} {len(self.labels)} labels loaded')
                 self.draw_labels(self.trees.nnai(self.pici) if self.trees else None)
+                self.labelfilename = d
             except Exception as e:
                 self.status(e, mode='alert')
             
@@ -472,6 +580,19 @@ class Malala:
                 relief, fg, bg = PUSHED_RFB[1]
                 self.but_labels[i].config(relief=relief, fg=fg, bg=bg)
     
+    def draw_visibility(self, window):
+        pnw_visi = PanedWindow(window)
+        pnw_visi.pack(fill='x', side='bottom', expand=False, anchor='s')
+        Label(pnw_visi, text='vision', width=5, anchor='w').pack(side='left')
+        vmap = ['a', 's', 'm', 'n']
+        self.rdo_visi = []
+        self.visi = tk.StringVar()
+        for v in vmap:
+            r = Radiobutton(pnw_visi, text=v, value=v, variable=self.visi)
+            r.pack(fill='x', side='left')
+            self.rdo_visi.append(r)            
+        self.visi.set(vmap[0])  # set default radio
+    
     def draw_labels(self, anno=None):
         if self.pnw_labels:
             self.pnw_labels.destroy()
@@ -482,6 +603,8 @@ class Malala:
             self.but_applytoall = Button(self.pnw_labels, text='Apply to All', fg='white',
                                          bg='brown', command=self.on_applytoall)
             self.but_applytoall.pack(fill='x', side='top')
+            self.draw_visibility(self.pnw_labels)
+            
             w = 3
             lay = int(len(self.labels) / w) + int(bool(len(self.labels) % w))
             self.but_labels = []
@@ -501,7 +624,7 @@ class Malala:
                     a += 1
 
 
-# In[5]:
+# In[7]:
 
 
 window = Tk()
